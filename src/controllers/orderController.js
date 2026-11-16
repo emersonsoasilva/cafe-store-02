@@ -1,8 +1,6 @@
-const { db, withTransaction } = require('../config/db');
-const { placeOrder, httpError } = require('../services/orderService');
+const { db } = require('../config/db');
+const { placeOrder, cancelOrder: cancelOrderService, setOrderStatus } = require('../services/orderService');
 const { auditLog } = require('../utils/logger');
-
-const STATUS_FLOW = ['pendente', 'pago', 'em_separacao', 'enviado', 'entregue'];
 
 /*
  * Modelagem NoSQL: os itens ficam EMBUTIDOS no documento do pedido
@@ -23,7 +21,6 @@ function toPublicOrder(order) {
       zip: order.shipping_zip,
     },
     trackingCode: order.tracking_code,
-    simulated: Boolean(order.simulated),
     createdAt: order.created_at,
     updatedAt: order.updated_at,
     items: order.items.map((i) => ({
@@ -38,7 +35,7 @@ function toPublicOrder(order) {
 /**
  * POST /api/orders - cria um pedido (compra).
  * As regras de estoque/transação ficam em services/orderService.js, para
- * serem compartilhadas com o simulador de atividade.
+ * serem compartilhadas com a automação do painel admin.
  */
 async function createOrder(req, res) {
   const { items, shipping } = req.body;
@@ -84,25 +81,7 @@ async function getOrder(req, res) {
 /** POST /api/orders/:id/cancel - cliente cancela o próprio pedido enquanto ainda não foi enviado */
 async function cancelOrder(req, res) {
   try {
-    const order = await withTransaction(async (tx) => {
-      // Lido dentro da seção crítica: evita cancelar duas vezes (estoque devolvido em dobro).
-      const found = await db.orders.findOneAsync({ public_id: String(req.params.id) });
-      if (!found) throw httpError(404, 'Pedido não encontrado.');
-      if (found.user_id !== req.user.id && req.user.role !== 'admin') {
-        throw httpError(403, 'Você não tem permissão para cancelar este pedido.');
-      }
-      if (['enviado', 'entregue', 'cancelado'].includes(found.status)) {
-        throw httpError(409, `Pedido no status "${found.status}" não pode mais ser cancelado.`);
-      }
-
-      for (const item of found.items) {
-        await db.products.updateAsync({ _id: item.product_id }, { $inc: { stock: item.quantity } });
-        tx.onRollback(() => db.products.updateAsync({ _id: item.product_id }, { $inc: { stock: -item.quantity } }));
-      }
-      await db.orders.updateAsync({ _id: found._id }, { $set: { status: 'cancelado', updated_at: new Date() } });
-      return found;
-    });
-
+    const order = await cancelOrderService(req.params.id, req.user);
     auditLog('order_cancelled', { userId: req.user.id, details: { orderId: order.public_id } });
     res.json({ message: 'Pedido cancelado e itens devolvidos ao estoque.' });
   } catch (err) {
@@ -117,31 +96,17 @@ async function cancelOrder(req, res) {
  */
 async function updateOrderStatus(req, res) {
   const { status, trackingCode } = req.body;
-  const order = await db.orders.findOneAsync({ public_id: String(req.params.id) });
-  if (!order) return res.status(404).json({ error: 'Pedido não encontrado.' });
-
-  if (order.status === 'cancelado') {
-    return res.status(409).json({ error: 'Pedido cancelado não pode ter o status alterado.' });
+  try {
+    const order = await setOrderStatus(req.params.id, status, trackingCode);
+    auditLog('order_status_updated', {
+      userId: req.user.id,
+      details: { orderId: order.public_id, newStatus: status },
+    });
+    res.json({ order: toPublicOrder(order) });
+  } catch (err) {
+    if (!err.status) throw err;
+    res.status(err.status).json({ error: err.message });
   }
-  if (!STATUS_FLOW.includes(status)) {
-    return res.status(400).json({ error: 'Status inválido.' });
-  }
-
-  const changes = { status, updated_at: new Date() };
-  if (trackingCode) changes.tracking_code = String(trackingCode);
-
-  const { affectedDocuments } = await db.orders.updateAsync(
-    { _id: order._id },
-    { $set: changes },
-    { returnUpdatedDocs: true }
-  );
-
-  auditLog('order_status_updated', {
-    userId: req.user.id,
-    details: { orderId: order.public_id, newStatus: status },
-  });
-
-  res.json({ order: toPublicOrder(affectedDocuments) });
 }
 
 /** GET /api/admin/orders - visão administrativa de todos os pedidos */

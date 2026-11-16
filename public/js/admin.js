@@ -7,14 +7,19 @@
     pendente: 'pago', pago: 'em_separacao', em_separacao: 'enviado', enviado: 'entregue',
   };
 
+  // A tela só abre para admin. A proteção de verdade está no servidor: as
+  // rotas /api/admin/* respondem 401/403 para qualquer outro usuário.
   async function guardAdmin() {
     try {
       const { user } = await api('/auth/me');
       if (user.role !== 'admin') {
         window.location.href = '/index.html';
+        return false;
       }
+      return true;
     } catch (_) {
       window.location.href = '/login.html?next=/admin.html';
+      return false;
     }
   }
 
@@ -28,7 +33,7 @@
           <tbody>
             ${products.map((p) => `
               <tr>
-                <td>${escapeHtml(p.name)}${p.simulated ? '<span class="tag-sim">simulado</span>' : ''}</td>
+                <td>${escapeHtml(p.name)}</td>
                 <td>${p.priceFormatted}</td>
                 <td>${p.stock}</td>
                 <td>${p.active ? 'Sim' : 'Não'}</td>
@@ -60,7 +65,7 @@
       el.innerHTML = orders.map((o) => `
         <div class="card">
           <div class="row" style="justify-content:space-between;align-items:center;">
-            <strong>Pedido ${o.id.slice(0, 8)}${o.simulated ? '<span class="tag-sim">simulado</span>' : ''}</strong>
+            <strong>Pedido ${o.id.slice(0, 8)}</strong>
             <span class="badge ${o.status}">${STATUS_LABEL[o.status] || o.status}</span>
           </div>
           <p class="hint">${o.totalFormatted} · Entrega em ${escapeHtml(o.shippingAddress.city)}/${escapeHtml(o.shippingAddress.state)}</p>
@@ -86,29 +91,12 @@
     }
   }
 
-  document.getElementById('product-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const priceReais = parseFloat(document.getElementById('priceReais').value || '0');
-    const body = {
-      name: document.getElementById('name').value,
-      description: document.getElementById('description').value,
-      origin: document.getElementById('origin').value,
-      roastLevel: document.getElementById('roastLevel').value,
-      weightGrams: parseInt(document.getElementById('weightGrams').value, 10),
-      priceCents: Math.round(priceReais * 100),
-      stock: parseInt(document.getElementById('stock').value, 10),
-    };
-    try {
-      await api('/admin/products', { method: 'POST', body });
-      e.target.reset();
-      loadProducts();
-    } catch (err) {
-      showMessage(msgEl, err.message);
-    }
-  });
-
   (async () => {
-    await guardAdmin();
+    if (!(await guardAdmin())) return;
+    document.getElementById('admin').hidden = false;
     loadProducts();
     loadOrders();
+    // Painel de automação (admin-automation.js): recarrega as listas acima
+    // sempre que a automação gravar algo novo no banco.
+    startAutomationPanel({ onChange: () => { loadProducts(); loadOrders(); } });
   })();

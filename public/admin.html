@@ -12,45 +12,75 @@
   <nav id="nav-actions"></nav>
 </header>
 
-<main>
+<main id="admin" hidden>
   <div id="msg" class="message" hidden></div>
 
-  <div class="card">
-    <h1>Novo produto</h1>
-    <form id="product-form">
-      <label for="name">Nome</label>
-      <input id="name" required maxlength="150" />
-      <label for="description">Descrição</label>
-      <input id="description" maxlength="1000" />
-      <label for="origin">Origem</label>
-      <input id="origin" maxlength="150" />
-      <div class="row">
-        <div>
-          <label for="roastLevel">Torra</label>
-          <select id="roastLevel">
-            <option value="claro">Claro</option>
-            <option value="medio">Médio</option>
-            <option value="escuro">Escuro</option>
-          </select>
-        </div>
-        <div>
-          <label for="weightGrams">Peso (g)</label>
-          <input id="weightGrams" type="number" value="250" min="1" />
-        </div>
+  <section class="card sim-control" aria-labelledby="auto-title">
+    <div class="sim-control-head">
+      <div>
+        <h1 id="auto-title">Automação de operações</h1>
+        <p class="hint">Executa funcionalidades reais da loja, em produção: a cada fase uma é sorteada (cadastrar clientes ou produtos, repor estoque, realizar compras, processar entregas ou cancelar pedidos) e repetida até a fase acabar. Tudo é gravado no banco de verdade.</p>
       </div>
-      <div class="row">
-        <div>
-          <label for="priceReais">Preço (R$)</label>
-          <input id="priceReais" type="number" step="0.01" min="0.01" required />
-        </div>
-        <div>
-          <label for="stock">Estoque</label>
-          <input id="stock" type="number" min="0" value="0" required />
-        </div>
+      <div class="sim-switch">
+        <span id="sim-state" class="sim-state off">Desativada</span>
+        <button id="sim-toggle" type="button">Ativar automação</button>
       </div>
-      <button type="submit">Cadastrar produto</button>
+    </div>
+    <form id="sim-config" class="sim-config">
+      <div>
+        <label for="phaseSeconds">Duração de cada fase (s)</label>
+        <input id="phaseSeconds" type="number" min="5" max="3600" required />
+      </div>
+      <div>
+        <label for="intervalSeconds">Uma ação a cada (s)</label>
+        <input id="intervalSeconds" type="number" min="1" max="60" required />
+      </div>
     </form>
-  </div>
+    <p id="sim-started" class="hint"></p>
+
+    <div class="sim-phase" id="sim-phase" aria-live="polite">
+      <p class="hint">Fase atual</p>
+      <h2 id="phase-label">Automação parada</h2>
+      <div class="sim-progress" aria-hidden="true"><div id="phase-bar"></div></div>
+      <p id="phase-meta" class="hint">Ative a automação para começar.</p>
+    </div>
+  </section>
+
+  <section class="sim-stats" aria-label="Resultados desta execução">
+    <div class="card sim-stat" data-kind="users">
+      <span class="sim-stat-num" id="c-users">0</span>
+      <span>clientes cadastrados</span>
+      <span class="hint" id="t-users"></span>
+    </div>
+    <div class="card sim-stat" data-kind="products">
+      <span class="sim-stat-num" id="c-products">0</span>
+      <span>produtos cadastrados</span>
+      <span class="hint" id="t-products"></span>
+    </div>
+    <div class="card sim-stat" data-kind="restock">
+      <span class="sim-stat-num" id="c-restock">0</span>
+      <span>reposições de estoque</span>
+    </div>
+    <div class="card sim-stat" data-kind="orders">
+      <span class="sim-stat-num" id="c-orders">0</span>
+      <span>compras realizadas</span>
+      <span class="hint" id="t-orders"></span>
+    </div>
+    <div class="card sim-stat" data-kind="fulfillment">
+      <span class="sim-stat-num" id="c-fulfillment">0</span>
+      <span>pedidos avançados</span>
+      <span class="hint" id="t-open"></span>
+    </div>
+    <div class="card sim-stat" data-kind="cancellations">
+      <span class="sim-stat-num" id="c-cancellations">0</span>
+      <span>pedidos cancelados</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>O que a automação fez</h2>
+    <ol id="sim-events" class="sim-events"><li class="hint">Nenhuma atividade ainda.</li></ol>
+  </section>
 
   <div class="card">
     <h2>Produtos</h2>
@@ -65,6 +95,7 @@
 
 <script src="/js/api.js"></script>
 <script src="/js/nav.js"></script>
+<script src="/js/admin-automation.js"></script>
 <script src="/js/admin.js"></script>
 </body>
 </html>

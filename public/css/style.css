@@ -128,11 +128,14 @@ input, select {
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; padding: 0.5rem; border-bottom: 1px solid #eee; font-size: 0.9rem; }
 
-/* ---------- Simulador de atividade ---------- */
+/* ---------- Automação de operações (painel admin) ---------- */
 :root {
   --sim-users: #2f6f8f;
   --sim-products: #6b8e23;
   --sim-orders: var(--accent);
+  --sim-restock: #7a5c99;
+  --sim-fulfillment: #2e7d6b;
+  --sim-cancellations: #a33b3b;
   --sim-failure: #8a8178;
 }
 
@@ -175,10 +178,13 @@ th, td { text-align: left; padding: 0.5rem; border-bottom: 1px solid #eee; font-
 .sim-config input { width: 9rem; }
 .sim-config input:disabled { background: #f3eee6; color: #777; }
 
-.sim-phase { border-left: 6px solid #d9cfc3; }
+.sim-phase { border-left: 6px solid #d9cfc3; padding: 0.75rem 0 0.25rem 1rem; margin-top: 1rem; }
 .sim-phase[data-kind="users"] { border-left-color: var(--sim-users); }
 .sim-phase[data-kind="products"] { border-left-color: var(--sim-products); }
 .sim-phase[data-kind="orders"] { border-left-color: var(--sim-orders); }
+.sim-phase[data-kind="restock"] { border-left-color: var(--sim-restock); }
+.sim-phase[data-kind="fulfillment"] { border-left-color: var(--sim-fulfillment); }
+.sim-phase[data-kind="cancellations"] { border-left-color: var(--sim-cancellations); }
 .sim-phase .hint { margin: 0; }
 .sim-phase h2 { margin: 0.2rem 0 0.75rem; }
 
@@ -197,11 +203,14 @@ th, td { text-align: left; padding: 0.5rem; border-bottom: 1px solid #eee; font-
 .sim-phase[data-kind="users"] .sim-progress > div { background: var(--sim-users); }
 .sim-phase[data-kind="products"] .sim-progress > div { background: var(--sim-products); }
 .sim-phase[data-kind="orders"] .sim-progress > div { background: var(--sim-orders); }
+.sim-phase[data-kind="restock"] .sim-progress > div { background: var(--sim-restock); }
+.sim-phase[data-kind="fulfillment"] .sim-progress > div { background: var(--sim-fulfillment); }
+.sim-phase[data-kind="cancellations"] .sim-progress > div { background: var(--sim-cancellations); }
 .sim-phase #phase-meta { margin-top: 0.5rem; }
 
 .sim-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
   margin-bottom: 1rem;
 }
@@ -215,6 +224,9 @@ th, td { text-align: left; padding: 0.5rem; border-bottom: 1px solid #eee; font-
 .sim-stat[data-kind="users"] { border-top-color: var(--sim-users); }
 .sim-stat[data-kind="products"] { border-top-color: var(--sim-products); }
 .sim-stat[data-kind="orders"] { border-top-color: var(--sim-orders); }
+.sim-stat[data-kind="restock"] { border-top-color: var(--sim-restock); }
+.sim-stat[data-kind="fulfillment"] { border-top-color: var(--sim-fulfillment); }
+.sim-stat[data-kind="cancellations"] { border-top-color: var(--sim-cancellations); }
 .sim-stat[data-kind="failure"] { border-top-color: var(--sim-failure); }
 .sim-stat.active { box-shadow: 0 0 0 2px var(--brown-500); }
 .sim-stat-num { font-size: 2.2rem; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
@@ -248,26 +260,20 @@ th, td { text-align: left; padding: 0.5rem; border-bottom: 1px solid #eee; font-
 .sim-event[data-kind="users"] .sim-tag { background: #dcebf2; color: var(--sim-users); }
 .sim-event[data-kind="products"] .sim-tag { background: #e6efd6; color: #4d6a17; }
 .sim-event[data-kind="orders"] .sim-tag { background: #f6e3d1; color: #8a4a12; }
+.sim-event[data-kind="restock"] .sim-tag { background: #ebe3f3; color: var(--sim-restock); }
+.sim-event[data-kind="fulfillment"] .sim-tag { background: #d9efe9; color: var(--sim-fulfillment); }
+.sim-event[data-kind="cancellations"] .sim-tag { background: #f5dcdc; color: var(--sim-cancellations); }
 .sim-event[data-kind="failure"] .sim-tag { background: #ece8e3; color: #5f5850; }
 .sim-event[data-kind="phase"],
 .sim-event[data-kind="control"] { font-weight: 600; background: #faf6f0; }
 .sim-event.fresh { animation: sim-fresh 1.5s ease-out; }
-
-.tag-sim {
-  font-size: 0.7rem;
-  padding: 0.05rem 0.45rem;
-  border-radius: 999px;
-  background: #ece8e3;
-  color: #5f5850;
-  margin-left: 0.35rem;
-  vertical-align: middle;
-}
 
 @keyframes sim-pulse { 50% { opacity: 0.35; } }
 @keyframes sim-bump { 0% { transform: scale(1.25); color: var(--accent); } 100% { transform: scale(1); } }
 @keyframes sim-fresh { from { background: #fff3cd; } to { background: transparent; } }
 
 @media (max-width: 600px) {
+  .sim-stats { grid-template-columns: repeat(2, 1fr); }
   .sim-event { grid-template-columns: 4.8rem 1fr; }
   .sim-event > span:last-child { grid-column: 1 / -1; }
 }

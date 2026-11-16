@@ -14,7 +14,6 @@ function toPublicProduct(p) {
     priceFormatted: (p.price_cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
     stock: p.stock,
     active: p.active,
-    simulated: Boolean(p.simulated),
   };
 }
 

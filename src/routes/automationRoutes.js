@@ -3,21 +3,22 @@ const { body } = require('express-validator');
 const validateRequest = require('../middleware/validateRequest');
 const { requireAuth, requireRole, requireCsrf } = require('../middleware/auth');
 const asyncHandler = require('../utils/asyncHandler');
-const simulator = require('../services/simulator');
+const automation = require('../services/automation');
 
 const router = express.Router();
 
-// Todas as rotas do simulador: login obrigatório + papel "admin" (RBAC).
-// Um cliente comum recebe 403 mesmo chamando a API direto, sem a tela.
-router.use('/admin/simulator', requireAuth, requireRole('admin'));
+// Automação de operações (painel "Administração"): executa funcionalidades
+// reais da loja em produção. Login obrigatório + papel "admin" (RBAC): um
+// cliente comum recebe 403 mesmo chamando a API direto, sem a tela.
+router.use('/admin/automation', requireAuth, requireRole('admin'));
 
 router.get(
-  '/admin/simulator',
-  asyncHandler(async (req, res) => res.json(await simulator.status()))
+  '/admin/automation',
+  asyncHandler(async (req, res) => res.json(await automation.status()))
 );
 
 router.post(
-  '/admin/simulator/start',
+  '/admin/automation/start',
   requireCsrf,
   [
     body('phaseSeconds').optional({ values: 'falsy' }).isInt({ min: 5, max: 3600 })
@@ -34,19 +35,19 @@ router.post(
   validateRequest,
   asyncHandler(async (req, res) => {
     const { phaseSeconds, intervalSeconds } = req.body;
-    const { alreadyRunning } = simulator.start(req.user, { phaseSeconds, intervalSeconds });
-    if (alreadyRunning) return res.status(409).json({ error: 'O simulador já está ativo.' });
-    return res.json(await simulator.status());
+    const { alreadyRunning } = automation.start(req.user, { phaseSeconds, intervalSeconds });
+    if (alreadyRunning) return res.status(409).json({ error: 'A automação já está ativa.' });
+    return res.json(await automation.status());
   })
 );
 
 router.post(
-  '/admin/simulator/stop',
+  '/admin/automation/stop',
   requireCsrf,
   asyncHandler(async (req, res) => {
-    const { alreadyStopped } = simulator.stop(req.user);
-    if (alreadyStopped) return res.status(409).json({ error: 'O simulador já está desativado.' });
-    return res.json(await simulator.status());
+    const { alreadyStopped } = automation.stop(req.user);
+    if (alreadyStopped) return res.status(409).json({ error: 'A automação já está desativada.' });
+    return res.json(await automation.status());
   })
 );
 
