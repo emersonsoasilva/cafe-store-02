@@ -4,14 +4,14 @@ const { db } = require('../config/db');
 const { encryptField } = require('../utils/crypto');
 
 /**
- * Cria um cliente. Usado pelo cadastro (authController) e pelo simulador,
+ * Cria um cliente. Usado pelo cadastro (authController) e pela automação,
  * para que os dois sigam exatamente as mesmas regras de armazenamento:
  * senha só como hash bcrypt, CPF criptografado (AES-256-GCM), papel sempre
  * "customer" (nunca vindo do cliente — evita escalada de privilégio).
  *
  * Lança erro com errorType "uniqueViolated" se o e-mail já existir.
  */
-async function createCustomer({ name, email, password, cpf, phone, street, city, state, zip }, { simulated = false } = {}) {
+async function createCustomer({ name, email, password, cpf, phone, street, city, state, zip }) {
   const cpfDigits = String(cpf).replace(/\D/g, '');
   // Versão assíncrona do bcrypt: não trava o servidor enquanto calcula o hash.
   const passwordHash = await bcrypt.hash(String(password), 12);
@@ -31,7 +31,6 @@ async function createCustomer({ name, email, password, cpf, phone, street, city,
     role: 'customer',
     failed_login_attempts: 0,
     locked_until: null,
-    simulated,
     created_at: new Date(),
   });
 }

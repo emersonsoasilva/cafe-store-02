@@ -12,7 +12,7 @@ const { errorHandler, notFoundHandler } = require('./src/middleware/errorHandler
 const authRoutes = require('./src/routes/authRoutes');
 const productRoutes = require('./src/routes/productRoutes');
 const orderRoutes = require('./src/routes/orderRoutes');
-const simulatorRoutes = require('./src/routes/simulatorRoutes');
+const automationRoutes = require('./src/routes/automationRoutes');
 
 const app = express();
 
@@ -81,7 +81,7 @@ app.use('/api', generalApiLimiter);
 app.use('/api/auth', authRoutes);
 app.use('/api', productRoutes);
 app.use('/api', orderRoutes);
-app.use('/api', simulatorRoutes);
+app.use('/api', automationRoutes);
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 

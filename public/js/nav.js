@@ -6,7 +6,7 @@ async function renderNav() {
     nav.innerHTML = `
       <span>Olá, ${escapeHtml(user.name.split(' ')[0])}</span>
       <a href="/orders.html">Meus pedidos</a>
-      ${user.role === 'admin' ? '<a href="/admin.html">Administração</a><a href="/simulator.html">Simulador</a>' : ''}
+      ${user.role === 'admin' ? '<a href="/admin.html">Administração</a>' : ''}
       <a href="#" id="logout-link">Sair</a>
     `;
     document.getElementById('logout-link').addEventListener('click', async (e) => {

@@ -105,69 +105,79 @@ impresso no console/terminal onde o `npm start` está rodando (veja
   estoque em transação atômica.
 - **Cancelamento** de pedido pelo cliente (enquanto ainda não foi enviado),
   com devolução automática ao estoque.
-- **Simulador de atividade** (só admin): cria usuários, produtos e compras
-  automaticamente, em fases sorteadas, com tela de acompanhamento.
-- **Painel administrativo**: cadastro/desativação de produtos e avanço do
-  status do pedido (`pendente → pago → em_separação → enviado → entregue`),
-  incluindo código de rastreio.
+- **Painel administrativo**: automação de operações (abaixo), desativação de
+  produtos e avanço do status do pedido
+  (`pendente → pago → em_separação → enviado → entregue`), incluindo código
+  de rastreio.
 - **Auditoria**: eventos sensíveis (login, falhas de login, reset de senha,
   mudança de status de pedido) ficam registrados na coleção `audit_log`.
 
 ---
 
-## Simulador de atividade (só administrador)
+## Automação de operações (só administrador)
 
-Tela **Simulador** (menu do admin, ou `http://IP/simulator.html`). Ela
-liga e desliga um processo que movimenta a loja sozinho e mostra o que está
-acontecendo em tempo real.
+Fica no topo da tela **Administração** (`http://IP/admin.html`), no lugar
+onde antes ficava o formulário "Novo produto". Ela executa **em produção**
+funcionalidades reais da loja, escolhidas por sorteio. Não é simulação: cada
+ação chama os mesmos serviços usados pelas telas e pela API e grava no banco
+de verdade. O que ela cria aparece no catálogo, nos pedidos dos clientes, no
+painel e no `audit_log` exatamente como um registro feito à mão.
+
+**Funcionalidades sorteadas** (entre parênteses, o peso no sorteio)
+| Funcionalidade | O que faz | Serviço usado |
+|---|---|---|
+| Cadastrar clientes (2) | cria uma conta de cliente | `userService.createCustomer` (mesmo do `/register`) |
+| Cadastrar produtos (1) | adiciona um café ao catálogo | `productService.createProduct` (mesmo do `POST /api/admin/products`) |
+| Repor estoque (1) | soma 10 a 40 unidades ao produto ativo com menos estoque | update `$inc` no produto |
+| Realizar compras (3) | um cliente cadastrado compra 1 ou 2 produtos | `orderService.placeOrder` (mesmo do `POST /api/orders`) |
+| Processar entregas (2) | avança o pedido em aberto mais antigo para o próximo status; ao ir para "enviado" gera um código de rastreio | `orderService.setOrderStatus` (mesmo do `PATCH /api/admin/orders/:id/status`) |
+| Cancelar pedidos (1) | cancela um pedido pendente e devolve os itens ao estoque | `orderService.cancelOrder` (mesmo do `POST /api/orders/:id/cancel`) |
 
 **Como funciona**
 - O tempo é dividido em **fases** (padrão: **30 segundos**). No começo de cada
-  fase, uma atividade é **sorteada**: criar usuários, adicionar produtos ao
-  estoque ou realizar compras.
-- Durante a fase, essa atividade se repete sem parar, uma a cada **3
-  segundos** (padrão): cria um usuário, depois outro, e assim por diante.
-- Quando a fase acaba, sorteia de novo e continua até alguém clicar em
-  **Desativar simulador**. O sorteio é livre, então a mesma atividade pode
-  sair duas vezes seguidas.
-- O simulador roda **no servidor**: continua funcionando se o admin fechar a
-  página, e para quando o servidor é desligado.
-
-**O que a tela mostra**
-- Estado (ativo/desativado), quem ativou e a que horas.
-- A fase atual, com a contagem regressiva até o próximo sorteio.
-- Quantos usuários, produtos e compras foram criados desde que foi ativado,
-  e o total da loja (reais + simulados).
-- A lista de tudo que aconteceu, com horário, atualizada a cada 2 segundos.
+  fase uma funcionalidade é sorteada e repetida a cada **3 segundos** (padrão)
+  até a fase acabar. Depois sorteia de novo, até alguém clicar em
+  **Desativar automação**.
+- Ao ativar, a tela pede confirmação, porque as ações mudam dados reais.
+- Roda **no servidor**: continua se o admin fechar a página e para quando o
+  servidor é desligado.
+- Se não houver o que fazer (sem estoque, sem pedido em aberto...), a ação é
+  **pulada** e isso aparece na tela; não é tratado como erro.
+- As listas de produtos e pedidos da própria tela se atualizam sozinhas
+  quando a automação grava algo.
 
 **Como alterar o tempo**
 
-*Opção 1, na própria tela:* com o simulador desativado, mude **"Duração de
-cada fase (s)"** e **"Uma ação a cada (s)"** e clique em Ativar. Vale só para
-aquela execução.
+*Na tela:* com a automação desativada, mude **"Duração de cada fase (s)"** e
+**"Uma ação a cada (s)"** e clique em Ativar. Vale só para aquela execução.
 
-*Opção 2, padrão permanente no `.env`:*
+*Padrão permanente no `.env`:*
 ```
-SIMULATOR_PHASE_SECONDS=30             # duração de cada fase (5 a 3600)
-SIMULATOR_ACTION_INTERVAL_SECONDS=3    # uma ação a cada N segundos (1 a 60)
+AUTOMATION_PHASE_SECONDS=30             # duração de cada fase (5 a 3600)
+AUTOMATION_ACTION_INTERVAL_SECONDS=3    # uma ação a cada N segundos (1 a 60)
 ```
-Depois de salvar, reinicie o servidor (feche o terminal e rode `iniciar.bat` de novo).
+Os nomes antigos `SIMULATOR_PHASE_SECONDS` e
+`SIMULATOR_ACTION_INTERVAL_SECONDS` continuam aceitos. Depois de salvar,
+reinicie o servidor.
 
 **Regras e segurança**
 - Ativar, desativar e ver o status exige **login de admin** (as rotas
-  `/api/admin/simulator/*` respondem 401 sem login e 403 para cliente) e
-  **token CSRF**. Cliente que abre a tela é mandado de volta para a loja.
-- As compras simuladas passam pelo **mesmo serviço** das compras reais
-  (`services/orderService.js`): checagem de estoque, preço lido do banco,
-  seção crítica e rollback. Nunca vendem além do estoque. Sem produto com
-  estoque, a ação é **pulada** e aparece na tela.
-- Os usuários simulados seguem as mesmas regras do cadastro: senha só como
-  hash bcrypt, CPF válido e criptografado, e-mail no domínio reservado
-  `@simulado.test`. A senha é aleatória e descartada, então essas contas não
-  servem para login.
-- Tudo que o simulador cria leva `simulated: true` e aparece com a etiqueta
-  **"simulado"** no painel de administração. Cada ação também vai para o
-  `audit_log`.
+  `/api/admin/automation/*` respondem 401 sem login e 403 para cliente) e
+  **token CSRF**.
+- As compras passam pela checagem de estoque, preço lido do banco, seção
+  crítica e rollback de qualquer compra; nunca vendem além do estoque.
+- Os clientes cadastrados seguem as regras do cadastro: senha só como hash
+  bcrypt, CPF válido e criptografado. O e-mail usa o domínio reservado
+  `@cliente.cafestore.test` (o mesmo padrão das contas de exemplo) e a senha
+  inicial é aleatória e não é mostrada a ninguém; o acesso é definido pelo
+  "esqueci minha senha".
+- Cada ação gera no `audit_log` o mesmo evento da ação manual
+  (`user_registered`, `product_created`, `product_updated`, `order_created`,
+  `order_status_updated`, `order_cancelled`), com `source: "automacao_admin"`
+  nos detalhes. Ligar e desligar gera `automation_started` /
+  `automation_stopped`.
+- O cadastro manual de produto saiu da tela, mas a rota
+  `POST /api/admin/products` continua disponível.
 
 ---
 
@@ -190,7 +200,7 @@ cafe-store/
 │   │   ├── network.js          # descobre o IP da máquina na rede
 │   │   └── asyncHandler.js     # encaminha erros de rotas assíncronas ao error handler
 │   ├── middleware/             # auth (JWT, RBAC, CSRF), rate limit, validação, erros
-│   ├── services/               # regras compartilhadas (usuário, produto, compra) + simulador
+│   ├── services/               # regras compartilhadas (usuário, produto, pedido) + automação
 │   ├── controllers/            # regra de negócio (auth, produtos, pedidos)
 │   └── routes/                 # definição das rotas + validação de entrada
 └── public/                     # front-end estático (HTML/CSS/JS puro)

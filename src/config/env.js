@@ -47,11 +47,14 @@ const env = {
   // deixaria o cliente forjar o IP via X-Forwarded-For e burlar o rate limit.
   trustProxy: process.env.TRUST_PROXY === 'true' ? 1 : false,
 
-  // --- Simulador de atividade (tela /simulator.html, só admin) ---
-  // Duração de cada fase (uma atividade sorteada por fase) e intervalo entre
-  // cada ação repetida dentro da fase. Também podem ser ajustados na tela.
-  simulatorPhaseSeconds: parseInt(process.env.SIMULATOR_PHASE_SECONDS || '30', 10),
-  simulatorIntervalSeconds: parseInt(process.env.SIMULATOR_ACTION_INTERVAL_SECONDS || '3', 10),
+  // --- Automação de operações (painel "Administração", só admin) ---
+  // Duração de cada fase (uma funcionalidade sorteada por fase) e intervalo
+  // entre cada execução dentro da fase. Também podem ser ajustados na tela.
+  // Os nomes SIMULATOR_* antigos continuam aceitos para .env já existentes.
+  automationPhaseSeconds: parseInt(
+    process.env.AUTOMATION_PHASE_SECONDS || process.env.SIMULATOR_PHASE_SECONDS || '30', 10),
+  automationIntervalSeconds: parseInt(
+    process.env.AUTOMATION_ACTION_INTERVAL_SECONDS || process.env.SIMULATOR_ACTION_INTERVAL_SECONDS || '3', 10),
 
   // --- Banco NoSQL embutido (NeDB) ---
   dataDir: path.resolve(process.env.DATA_DIR || path.join(process.cwd(), 'data')),
@@ -65,11 +68,11 @@ if (!/^[0-9a-fA-F]{64}$/.test(env.fieldEncryptionKey)) {
   throw new Error('FIELD_ENCRYPTION_KEY deve ser uma string hex de 64 caracteres (32 bytes).');
 }
 
-if (!(env.simulatorPhaseSeconds >= 5 && env.simulatorPhaseSeconds <= 3600)) {
-  throw new Error('SIMULATOR_PHASE_SECONDS deve ser um número entre 5 e 3600.');
+if (!(env.automationPhaseSeconds >= 5 && env.automationPhaseSeconds <= 3600)) {
+  throw new Error('AUTOMATION_PHASE_SECONDS deve ser um número entre 5 e 3600.');
 }
-if (!(env.simulatorIntervalSeconds >= 1 && env.simulatorIntervalSeconds <= 60)) {
-  throw new Error('SIMULATOR_ACTION_INTERVAL_SECONDS deve ser um número entre 1 e 60.');
+if (!(env.automationIntervalSeconds >= 1 && env.automationIntervalSeconds <= 60)) {
+  throw new Error('AUTOMATION_ACTION_INTERVAL_SECONDS deve ser um número entre 1 e 60.');
 }
 
 if (env.cookieSecure && !env.httpsEnabled) {
